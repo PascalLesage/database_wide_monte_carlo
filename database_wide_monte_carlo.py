@@ -67,12 +67,14 @@ def worker_process(project, job_dir, job_id, worker_id, functional_units, iterat
             lca.inventory = lca.biosphere_matrix * sparse.spdiags([lca.supply_array], [0], count, count)
             np.save(os.path.join(inventory_dir, "{}.npy".format(actKey)), np.array(lca.inventory.sum(1), dtype = np.float32))
     
-def get_useful_info(db, BASE_OUTPUT_DIR, job_id, activities):
+def get_useful_info(collector_functional_unit, BASE_OUTPUT_DIR, job_id, activities):
 
-    # Random sacrificial LCA to extract relevant information
-    act_random = db.random()
-    sacrificial_lca = LCA({act_random:1})
-    sacrificial_lca.lci()    
+    # Sacrificial LCA to extract relevant information
+    # Done on the "collector" functional unit to ensure that all activities and 
+    # exchanges are covered in the common dicts (only relevant if some activities 
+    # link to other upstream databases
+    sacrificial_lca = LCA(collector_functional_unit)
+    sacrificial_lca.lci()
 
     # Folder containing information
     common_dir = os.path.join(BASE_OUTPUT_DIR, job_id, "{}_common_files".format(job_id))
@@ -80,7 +82,7 @@ def get_useful_info(db, BASE_OUTPUT_DIR, job_id, activities):
     
     with open(os.path.join(common_dir, 'activities.pickle'), "wb") as f:
         pickle.dump(activities, f)
-
+    
     with open(os.path.join(common_dir, 'product_dict.pickle'), "wb") as f:
         pickle.dump(sacrificial_lca.product_dict, f)
     
@@ -89,7 +91,7 @@ def get_useful_info(db, BASE_OUTPUT_DIR, job_id, activities):
     
     with open(os.path.join(common_dir,'activity_dict.pickle'), "wb") as f:
         pickle.dump(sacrificial_lca.activity_dict, f)
-    
+
     rev_activity_dict, rev_product_dict, rev_bio_dict = sacrificial_lca.reverse_dict()
     
     with open(os.path.join(common_dir,'rev_product_dict.pickle'), "wb") as f:
@@ -134,12 +136,13 @@ def main(project, database, iterations, cpus, output_dir):
     db = Database(database)
     activities = [activity for activity in db]
     functional_units = [ {act.key: 1} for act in activities ]
+    collector_functional_unit = {k:v for d in functional_units for k, v in d.items()}
     
     os.chdir(BASE_OUTPUT_DIR)
     job_dir = os.path.join(BASE_OUTPUT_DIR, job_id)
     os.mkdir(job_dir)
     
-    get_useful_info(db, BASE_OUTPUT_DIR, job_id, activities)
+    get_useful_info(collector_functional_unit, BASE_OUTPUT_DIR, job_id, activities)
     
     workers = []
 
