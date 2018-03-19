@@ -8,6 +8,7 @@ from math import ceil
 import click
 import glob
 import json
+import datetime
 
 """ Concatenate samples within jobs and store in a temp. directory.
     Jobs should previously have been cleaned using `clean_jobs.py`
@@ -65,17 +66,18 @@ def concatenate_within_jobs(base_dir, database_name, include_inventory, include_
     jobs = glob.glob(job_dir+'/*/')
     logs = {}
     for job in jobs:
+        assert os.path.isfile(os.path.join(job, 'log.json')), "Missing log file, run clean_jobs.py first."
         with open(os.path.join(job, 'log.json'), 'r') as f:
             log = json.load(f)
         logs[job] = log
-    if not force_through:
-        for log_id, log in logs.items():
-            if include_inventory:
-                assert log['cleaned']['included_elements']['Inventory'], "Inventory not cleaned for {}, function aborted. Must clean first using clean_jobs.py".format(job)
-            if include_supply:
-                assert log['cleaned']['included_elements']['Supply'], "Supply arrays not cleaned for {}, function aborted. Must clean first using clean_jobs.py".format(job)
-            if include_matrices:
-                assert log['cleaned']['included_elements']['Matrices'], "Matrices not cleaned for {}, function aborted. Must clean first using clean_jobs.py".format(job)
+
+    for log_id, log in logs.items():
+        if include_inventory:
+            assert log['cleaned']['included_elements']['Inventory'], "Inventory not cleaned for {}, function aborted. Must clean first using clean_jobs.py".format(job)
+        if include_supply:
+            assert log['cleaned']['included_elements']['Supply'], "Supply arrays not cleaned for {}, function aborted. Must clean first using clean_jobs.py".format(job)
+        if include_matrices:
+            assert log['cleaned']['included_elements']['Matrices'], "Matrices not cleaned for {}, function aborted. Must clean first using clean_jobs.py".format(job)
     print("Processing jobs: {}".format(jobs))
     for job in jobs:
         jobs_samples_folder = os.path.join(base_dir, database_name,
@@ -165,9 +167,8 @@ def concatenate_within_jobs(base_dir, database_name, include_inventory, include_
             process_matrix('A_matrix')
             process_matrix('B_matrix')
             
-            
+        now = datetime.datetime.now()    
         logs[job]['internally_concatenated'] = {
-                {
                     'included_elements': 
                         {
                             'Matrices':include_matrices*1,
@@ -180,14 +181,15 @@ def concatenate_within_jobs(base_dir, database_name, include_inventory, include_
                             now.month,
                             now.day,
                             now.hour,
-                            now.minute
-                }
+                            now.minute)
             }
         with open(os.path.join(job, 'log.json'), 'w') as f:
             log = json.dump(logs[job], f, indent=4)
     
+    print("All requested samples now concatenated within jobs. The next task: concatenate across jobs using concatenate_across_jobs.py")
     return None
 
 if __name__ == "__main__":
+    __spec__ = None
     concatenate_within_jobs()
     
