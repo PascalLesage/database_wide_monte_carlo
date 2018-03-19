@@ -199,7 +199,6 @@ def concatenate_across_jobs(base_dir, database_name, project,
             log = {}
         now = datetime.datetime.now() 
         log['included_in_global_concatenated_results'] = {
-                {
                     'included_elements': 
                         {
                             'Matrices':include_matrices*1,
@@ -212,10 +211,9 @@ def concatenate_across_jobs(base_dir, database_name, project,
                             now.month,
                             now.day,
                             now.hour,
-                            now.minute
-                }
+                            now.minute)
             }
-                                                        }
+            
         with open(os.path.join(job, 'log.json'), 'w') as f:
             json.dump(log, f, indent=4)    
 
@@ -307,6 +305,7 @@ def concatenate_across_jobs(base_dir, database_name, project,
                             now.minute),
                         'included_jobs': jobs_log
             }
+        }
     with open(os.path.join(results_folder, 'log.json'), 'w') as f:
                 log = json.dump(result_log, f, indent=4)       
     
