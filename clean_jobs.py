@@ -114,7 +114,7 @@ def clean_jobs(base_dir,
           }
     for job in jobs:
         try:
-            with open(os.path.join(job, 'log.json'), 'w') as f:
+            with open(os.path.join(job, 'log.json'), 'r') as f:
                 log = json.load(f)
                 print("couldn't open log")
         except:
@@ -137,6 +137,7 @@ def clean_jobs(base_dir,
             }
         with open(os.path.join(job, 'log.json'), 'w') as f:
             json.dump(log, f, indent=4)
+    return None
 
 if __name__ == '__main__':
     clean_jobs()
