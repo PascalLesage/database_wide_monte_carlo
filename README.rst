@@ -18,10 +18,10 @@ Structure of results
 Types of results
 ==========
 
-- Arrays with the values sampled for the technosphere matrix $\mathbf{A}$ and the elementary flow matrix $\mathbf{B}$ (called the biosphere matrix in Brightway2)
-- Supply arrays $\mathbf{s}$ for unit demands of each activity (i.e. how much each unit process needs to produce to meet a unit of demand for any activity in the database)  
-- Inventory arrays $\mathbf{g}$ for unit demands of each activity, functionaly equivalent to aggregated LCI datasets  
-- LCIA score arrays $\mathbf{h}$ for unit demands of each activity  
+- Arrays with the values sampled for the technosphere matrix **A** and the elementary flow matrix **B** (called the biosphere matrix in Brightway2)
+- Supply arrays **s** for unit demands of each activity (i.e. how much each unit process needs to produce to meet a unit of demand for any activity in the database)  
+- Inventory arrays **g** for unit demands of each activity, functionaly equivalent to aggregated LCI datasets  
+- LCIA score arrays **h** for unit demands of each activity  
 
 Usage
 ===========
@@ -44,7 +44,7 @@ The steps to a typical usage are:
 
   ``python concatenate_within_jobs.py --base_dir=path_to_my_folder --database_name=db --include_inventory=True --include_matrices=True --include_supply=True --cpus=8 --delete_raw_files=True``
 
-- Concatenate results across jobs using `concatenate_across_jobs.py`. At this point, results can include (depending on what arguments were passed to the former functions) $\mathbf{A}$ and $\mathbf{B}$ matrix results, supply arrays $\mathbf{s}$, cradle-to-gate inventories $\mathbf{g}$. By design, they all have the same number of columns, and the i*th* column in any array is based on the same Monte Carlo iteration.  
+- Concatenate results across jobs using `concatenate_across_jobs.py`. At this point, results can include (depending on what arguments were passed to the former functions) **A** and **B** matrix results, supply arrays **s**, cradle-to-gate inventories **g**. By design, they all have the same number of columns, and the i*th* column in any array is based on the same Monte Carlo iteration.  
 
   ``python across_jobs.py --base_dir=path_to_my_folder --database_name=db --project=my_project --include_inventory=True --include_matrices=True --include_supply=True --cpus=8 --delete_temps=True``
 
@@ -62,9 +62,9 @@ To minimize time issues:
 
 To minimize disk space issues: 
 - Delete samples and temporary files as you go along (`delete_raw_files=True` in `concatenate_within_jobs.py` and `delete_temps=True` in `concatenate_across_jobs.py`)
-- Only generate the information you need. Specifically, supply arrays $\mathbf{s}$ take up lots of space, and are generally not very useful.
+- Only generate the information you need. Specifically, supply arrays **s** take up lots of space, and are generally not very useful.
 
-If you are only interested in generating correlated precalculated samples, consider using the standard `MonteCarloLCA` class in Brightway2 instead. You can seed these `MonteCarloLCA` objects, and hence conduct simulations on multiple activities in series using the same seed to ensure the same values for the $\mathbf{A}$ and $\mathbf{B}$ matrices are used for each iteration.
+If you are only interested in generating correlated precalculated samples, consider using the standard `MonteCarloLCA` class in Brightway2 instead. You can seed these `MonteCarloLCA` objects, and hence conduct simulations on multiple activities in series using the same seed to ensure the same values for the **A** and **B** matrices are used for each iteration.
 
 Examples
 =========
@@ -73,7 +73,9 @@ See the examples in the Documentation section of this repo.
 Contributing
 =========
 Don't hesitate to fork and improve this code, and to propose pull request. 
+
 Some ideas: 
+
 - Reduce the time used to treat millions of very tiny files by changing data storage strategy (e.g. HDF5?). 
 - Create a `DatabaseWideMonteCarlo` class, and convert the functions to methods.  
 We are open to suggestion.
@@ -81,5 +83,7 @@ We are open to suggestion.
 Contributors
 ==========
 Chris Mutel (PSI) 
+
 Pascal Lesage (CIRAIG)
+
 Nolwenn Kazoum
