@@ -7,6 +7,7 @@ import shutil
 import json
 import pandas as pd
 from brightway2 import *
+import datetime
 
 @click.command()
 @click.option('--base_dir', help='Path to directory with jobs', type=str) 
@@ -196,6 +197,7 @@ def concatenate_across_jobs(base_dir, database_name, project,
                 log = json.load(f)
         except:
             log = {}
+        now = datetime.datetime.now() 
         log['included_in_global_concatenated_results'] = {
                 {
                     'included_elements': 
@@ -287,9 +289,9 @@ def concatenate_across_jobs(base_dir, database_name, project,
         with open(os.path.join(job, 'log.json'), 'rb') as f:
                 log = json.load(f)
         job_logs[os.path.basename(job): log]
+    now = datetime.datetime.now()     
     result_log = {
         'concatenated_accross_jobs': {
-                {
                     'included_elements': 
                         {
                             'Matrices':include_matrices*1,
@@ -304,7 +306,6 @@ def concatenate_across_jobs(base_dir, database_name, project,
                             now.hour,
                             now.minute),
                         'included_jobs': jobs_log
-                }
             }
     with open(os.path.join(results_folder, 'log.json'), 'w') as f:
                 log = json.dump(result_log, f, indent=4)       
