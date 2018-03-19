@@ -29,7 +29,7 @@ class direct_solving_MC(MonteCarloLCA, DirectSolvingMixin):
     '''
     pass
 
-def correlated_MCs_worker(project,
+def correlated_MCs_worker(project_name,
                           job_dir,
                           job_id,
                           worker_id,
@@ -47,7 +47,7 @@ def correlated_MCs_worker(project,
     '''
     
     # Open the project containing the target database
-    projects.set_current(project)
+    projects.set_current(project_name)
     # Create a factice functional unit that spans all possible demands
 	# Useful if some activities link to other upstream databases
 
@@ -176,7 +176,7 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
     return None
             
 @click.command()
-@click.option('--project', default='default', help='Brightway2 project name', type=str)
+@click.option('--project_name', default='default', help='Brightway2 project name', type=str)
 @click.option('--database_name', help='Database name', type=str)
 @click.option('--iterations', default=1000, help='Number of Monte Carlo iterations', type=int)
 @click.option('--cpus', default=mp.cpu_count(), help='Number of used CPU cores', type=int)
@@ -185,11 +185,11 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
 @click.option('--include_supply', help='Save supply vector', default=False, type=bool)
 @click.option('--include_matrices', help='Save A and B matrices', default=False, type=bool)
 
-def generate_samples_job(project, database_name, iterations, cpus, base_dir, include_inventory=False, include_supply=False, include_matrices=False):
+def generate_samples_job(project_name, database_name, iterations, cpus, base_dir, include_inventory=False, include_supply=False, include_matrices=False):
     """Parent function for database-wide sample generation 
 	
 	Arguments: 
-	project -- Brightway2 project where the database is saved (str)
+	project_name -- Brightway2 project where the database is saved (str)
 	database_name -- Database name (str)
 	iterations -- Number of Monte Carlo iterations required
 	cpus -- Number of cpus over which the work is to be distributed
@@ -211,8 +211,8 @@ def generate_samples_job(project, database_name, iterations, cpus, base_dir, inc
         sys.exit(0)
     
     # Open the Brighway2 project
-    assert project in projects, "The requested project does not exist"
-    projects.set_current(project)
+    assert project_name in projects, "The requested project does not exist"
+    projects.set_current(project_name)
     
 	# Create a unique job name
     now = datetime.datetime.now()
@@ -273,7 +273,7 @@ def generate_samples_job(project, database_name, iterations, cpus, base_dir, inc
     workers = []
     for worker_id in range(cpus):
         child = mp.Process(target=correlated_MCs_worker,
-                           args=(project,
+                           args=(project_name,
 								 job_dir,
 								 job_id,
 								 worker_id,
