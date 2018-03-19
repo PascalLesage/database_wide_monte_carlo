@@ -288,7 +288,8 @@ def generate_samples_job(project, database_name, iterations, cpus, base_dir, inc
         child.start()
     for c in workers:
         c.join()
-
+    
+    now = datetime.datetime.now()
     log = {'samples_generated':
             {
                 'included_elements': 
