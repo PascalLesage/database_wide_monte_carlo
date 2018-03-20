@@ -72,36 +72,18 @@ def whole_method_LCIA_calculator(method_list, results_folder, ref_bio_dict):
 
 @click.command()
 @click.option('--base_dir', help='Path to directory with jobs', type=str) 
-@click.option('--project', help='Name of Brightway2 project', type=str)
+@click.option('--project_name', help='Name of Brightway2 project', type=str)
 @click.option('--database_name', type=str)
 @click.option('--cpus', help='Number of CPUs allocated to this work', type=int)
 
-def dispatch_LCIA_calc_to_workers(base_dir, project, database_name, cpus):
-    projects.set_current(project)
+def dispatch_LCIA_calc_to_workers(base_dir, project_name, database_name, cpus):
+    projects.set_current(project_name)
     try:
         method_list = pickle.load(open(os.path.join(base_dir, database_name, 'results', 'reference_files', 'methods.pickle'), 'rb'))
     except:
         method_list = list(methods)
     
     results_folder = os.path.join(base_dir, database_name, 'results')
-    
-    # Generate a useful Excel to get information about methods
-    m_method=[m[0] for m in method_list]
-    m_IC1=[m[1] for m in method_list]
-    m_IC2=[m[2] for m in method_list]
-    m_Unit=[Method(m).metadata['unit'] for m in method_list]
-    m_MD5hash=[Method(m).get_abbreviation() for m in method_list]
-    df = pd.DataFrame.from_items(
-        [
-            ('Method', m_method),
-            ('Impact category (1)', m_IC1),
-            ('Impact category (2)', m_IC2),
-            ('Unit', m_Unit),
-            ('MD5 hash', m_MD5hash)
-        ]
-    )
-    df = df.set_index('MD5 hash')
-    df.to_excel(os.path.join(results_folder, 'reference_files', 'methods description.xlsx'))
     
     method_sublists = chunks(method_list, ceil(len(method_list)/cpus))
     
@@ -121,7 +103,7 @@ def dispatch_LCIA_calc_to_workers(base_dir, project, database_name, cpus):
         workers.append(j)
     for w in workers:
         w.start()
-        w.join()
+    w.join()
     
     
 if __name__ == '__main__':

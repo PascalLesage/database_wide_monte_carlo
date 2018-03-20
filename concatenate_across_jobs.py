@@ -12,14 +12,14 @@ import datetime
 @click.command()
 @click.option('--base_dir', help='Path to directory with jobs', type=str) 
 @click.option('--database_name', type=str)
-@click.option('--project', type=str)
+@click.option('--project_name', type=str)
 @click.option('--include_inventory', default=True, type=bool)
 @click.option('--include_matrices', default=False, type=bool)
 @click.option('--include_supply', default=False, type=bool)
 @click.option('--delete_temps', help='Delete job-level concatenated files', type=bool)
 
 
-def concatenate_across_jobs(base_dir, database_name, project, 
+def concatenate_across_jobs(base_dir, database_name, project_name, 
                             include_inventory, include_supply,
                             include_matrices, delete_temps):
     ''' Concatenates and stores samples from multiple jobs.
@@ -219,7 +219,7 @@ def concatenate_across_jobs(base_dir, database_name, project,
 
     # Generate some nice Excel files to make it easier to use output
     # Useful activity description
-    projects.set_current(project)
+    projects.set_current(project_name)
     
     cols = ['name', 'location', 'reference product', 'production amount', 'unit']
     file = os.path.join(reference_folder, 'activity_UUIDs.json')
@@ -281,12 +281,32 @@ def concatenate_across_jobs(base_dir, database_name, project,
         df.loc[i, 'unit'] = act['unit']
         df.loc[i, 'location'] = act['location']
     df.to_excel(os.path.join(reference_folder, 'supply_array_indices_mapping.xlsx'))    
+
+    # Generate a useful Excel to get information about methods
+    method_list = list(methods)
+    m_method=[m[0] for m in method_list]
+    m_IC1=[m[1] for m in method_list]
+    m_IC2=[m[2] for m in method_list]
+    m_Unit=[Method(m).metadata['unit'] for m in method_list]
+    m_MD5hash=[Method(m).get_abbreviation() for m in method_list]
+    df = pd.DataFrame.from_items(
+        [
+            ('Method', m_method),
+            ('Impact category (1)', m_IC1),
+            ('Impact category (2)', m_IC2),
+            ('Unit', m_Unit),
+            ('MD5 hash', m_MD5hash),
+            ('Brightway compliant name', method_list)
+        ]
+    )
+    df = df.set_index('MD5 hash')
+    df.to_excel(os.path.join(results_folder, 'reference_files', 'methods description.xlsx'))
     
     job_logs = {}
     for job in jobs:
         with open(os.path.join(job, 'log.json'), 'rb') as f:
                 log = json.load(f)
-        job_logs[os.path.basename(job): log]
+        job_logs[str(job)] = log
     now = datetime.datetime.now()     
     result_log = {
         'concatenated_accross_jobs': {
@@ -303,7 +323,7 @@ def concatenate_across_jobs(base_dir, database_name, project,
                             now.day,
                             now.hour,
                             now.minute),
-                        'included_jobs': jobs_log
+                        'included_jobs': job_logs
             }
         }
     with open(os.path.join(results_folder, 'log.json'), 'w') as f:
