@@ -34,7 +34,7 @@ The steps to a typical usage are:
 
 - Dependently generate individual samples using the `sample_generation.py` file. This process can be halted and restarted, can be distributed across many computers, and relies on multiprocessing to speed up Monte carlo simulations. The results generated in one batch are found in `job` directories. 
 
-  ``python sample_generation.py --project=my_project --database_name=db --iterations=1000 --cpus=8 --base_dir=path_to_my_folder --include_inventory=True --include_supply=True --include_matrices=True``
+  ``python sample_generation.py --project_name=my_project --database_name=db --iterations=1000 --cpus=8 --base_dir=path_to_my_folder --include_inventory=True --include_supply=True --include_matrices=True``
 
 - Sanitize results using `clean_jobs.py`. This will delete jobs or iterations within a job that are missing information. 
 
@@ -46,7 +46,7 @@ The steps to a typical usage are:
 
 - Concatenate results across jobs using `concatenate_across_jobs.py`. At this point, results can include (depending on what arguments were passed to the former functions) **A** and **B** matrix results, supply arrays **s**, cradle-to-gate inventories **g**. By design, they all have the same number of columns, and the i*th* column in any array is based on the same Monte Carlo iteration.  
 
-  ``python across_jobs.py --base_dir=path_to_my_folder --database_name=db --project=my_project --include_inventory=True --include_matrices=True --include_supply=True --cpus=8 --delete_temps=True``
+  ``python across_jobs.py --base_dir=path_to_my_folder --database_name=db --project_name=my_project --include_inventory=True --include_matrices=True --include_supply=True --cpus=8 --delete_temps=True``
 
 - Generate LCIA scores from the LCI results using `calculate_LCIA.py`. LCIA score arrays will be generated for all methods specified in a list saved to base_dir/database_name/results/reference_files/methods.pickle, or all methods implemented in Brightway2 if file doesn't exist.  
 
