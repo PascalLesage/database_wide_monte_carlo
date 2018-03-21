@@ -116,8 +116,8 @@ def clean_jobs(base_dir,
         try:
             with open(os.path.join(job, 'log.json'), 'r') as f:
                 log = json.load(f)
-                print("couldn't open log")
         except:
+            print("couldn't open log")
             log = {}
         now = datetime.datetime.now()
         log['cleaned'] = {

@@ -118,6 +118,8 @@ def concatenate_within_jobs(base_dir, database_name, include_inventory, include_
                 workers.append(j)
             for w in workers:
                 w.start()
+            for w in workers:
+                w.join()
         if include_supply:
             output_folder = os.path.join(base_dir, 'database_name', 'jobs',
                                          job, 'concatenated_arrays', 'Supply')
@@ -147,6 +149,8 @@ def concatenate_within_jobs(base_dir, database_name, include_inventory, include_
                 workers.append(j)
             for w in workers:
                 w.start()
+            for w in workers:
+                w.join()
         if include_matrices:
             def process_matrix(matrix):
                 files = [os.path.join(it, 'Matrices', matrix+'.npy')

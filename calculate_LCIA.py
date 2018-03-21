@@ -75,15 +75,21 @@ def whole_method_LCIA_calculator(method_list, results_folder, ref_bio_dict):
 @click.option('--project_name', help='Name of Brightway2 project', type=str)
 @click.option('--database_name', type=str)
 @click.option('--cpus', help='Number of CPUs allocated to this work', type=int)
+@click.option('--method_shortlist_name', help='Name of pickle list with method names', type=str, default=None)
 
-def dispatch_LCIA_calc_to_workers(base_dir, project_name, database_name, cpus):
+def dispatch_LCIA_calc_to_workers(base_dir, project_name, database_name, cpus, method_shortlist_name):
     projects.set_current(project_name)
-    try:
-        method_list = pickle.load(open(os.path.join(base_dir, database_name, 'results', 'reference_files', 'methods.pickle'), 'rb'))
-    except:
-        method_list = list(methods)
     
     results_folder = os.path.join(base_dir, database_name, 'results')
+    if method_shortlist_name is not None:
+        method_short_list_fp = os.path.join(results_folder, 'reference_files', method_shortlist_name+'.pickle')
+        assert os.path.isfile(method_short_list_fp), "Couldn't read the specified method_shortlist_name {}. Aborting".format(method_short_list_fp)
+        method_list = pickle.load(open(method_short_list_fp, 'rb'))
+        print("Calculating LCIA score arrays for the following categories:")
+        print(method_list)
+    else: 
+        method_list = list(methods)
+        print("Calculating LCIA score arrays for all {} impact categories".format(len(method_list)))
     
     method_sublists = chunks(method_list, ceil(len(method_list)/cpus))
     
@@ -107,4 +113,5 @@ def dispatch_LCIA_calc_to_workers(base_dir, project_name, database_name, cpus):
     
     
 if __name__ == '__main__':
+    __spec__ = None
     dispatch_LCIA_calc_to_workers()

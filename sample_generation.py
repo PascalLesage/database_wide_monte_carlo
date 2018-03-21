@@ -60,7 +60,7 @@ def correlated_MCs_worker(project_name,
     # Build technosphere and biosphere matrices and corresponding rng
     lca.load_data()
     
-    for index in range(iterations):        
+    for index in range(iterations):
         # Make directories for current iteration
         it_nb_worker_id = "iteration_{}-{}".format(worker_id,index)
         index_dir = os.path.join(job_dir, it_nb_worker_id)
