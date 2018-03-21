@@ -130,7 +130,8 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
 
     # Make folder to contain extracted information
     common_dir = os.path.join(job_dir, 'common_files')
-    os.mkdir(common_dir)
+    if not os.path.isdir(common_dir):
+        os.makedirs(common_dir)
     
 	# Save various attributes for eventual reuse in interpretation
     file = os.path.join(common_dir, 'activity_UUIDs.json')
