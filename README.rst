@@ -68,7 +68,7 @@ If you are only interested in generating correlated precalculated samples, consi
 
 Examples
 =========
-See the examples in the Documentation section of this repo.
+See the Jupyter NOtebooks in the Examples section of this repo.
 
 Contributing
 =========
