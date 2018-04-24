@@ -32,7 +32,7 @@ def concat_vectors_worker(activity_list, output_type, job,
                   and 'common_files' not in folder]
     nb_iterations = len(iterations)
     for act in activity_list:
-        if act in os.listdir(output_folder):
+        if act+'.npy' in os.listdir(output_folder):
             pass
         else:
             files = [os.path.join(it, output_type, act+'.npy')
