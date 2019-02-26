@@ -15,6 +15,9 @@ import multiprocessing as mp
 import pickle
 import sys
 import json
+from water_balancing_data import get_water_balancing_data
+from water_balancing import balance_water_exchanges
+
 
 __author__ = "Pascal Lesage"
 __credits__ = ["Pascal Lesage, Chris Mutel, Nolwenn Kazoum"]
@@ -25,9 +28,9 @@ __email__ = "pascal.lesage@polymtl.ca"
 
 
 class direct_solving_MC(MonteCarloLCA, DirectSolvingMixin):
-    ''' Class expanding MonteCarloLCA to include `solve_linear_system`.
-    '''
+    """Class expanding MonteCarloLCA to include `solve_linear_system`."""
     pass
+
 
 def correlated_MCs_worker(project_name,
                           job_dir,
@@ -37,39 +40,42 @@ def correlated_MCs_worker(project_name,
                           iterations,
                           include_inventory,
                           include_supply,
-                          include_matrices
+                          include_matrices,
+                          balance_water
                          ):
-    '''Generate database-wide correlated Monte Carlo samples
+    """Generate database-wide correlated Monte Carlo samples
     
     This function is a worker function. It is called from 
     the `generate_samples` function, that dispatches the Monte Carlo 
     work to a specified number of workers.
-    '''
+    """
     
     # Open the project containing the target database
     projects.set_current(project_name)
     # Create a factice functional unit that spans all possible demands
-	# Useful if some activities link to other upstream databases
+    # Useful if some activities link to other upstream databases
 
-    collector_functional_unit = {k:v 
+    collector_functional_unit = {k: v
                                  for d in functional_units_list 
                                  for k, v in d.items()
                                 }
     # Create an LCA object that spans all demands
-    lca = direct_solving_MC(demand = collector_functional_unit)
+    lca = direct_solving_MC(demand=collector_functional_unit)
     # Build technosphere and biosphere matrices and corresponding rng
     lca.load_data()
     
     for index in range(iterations):
         # Make directories for current iteration
-        it_nb_worker_id = "iteration_{}-{}".format(worker_id,index)
+        it_nb_worker_id = "iteration_{}-{}".format(worker_id, index)
         index_dir = os.path.join(job_dir, it_nb_worker_id)
         os.mkdir(index_dir)
 
         # Sample new values for technosphere and biosphere matrices 
         lca.rebuild_technosphere_matrix(lca.tech_rng.next())
         lca.rebuild_biosphere_matrix(lca.bio_rng.next())
-                
+        if balance_water:
+            lca = balance_water_exchanges(lca, os.path.join(job_dir, 'common_files'))
+
         if include_matrices:
             matrices_dir = os.path.join(index_dir,'Matrices')
             os.mkdir(matrices_dir)
@@ -121,7 +127,8 @@ def correlated_MCs_worker(project_name,
             )
         )
 
-def get_useful_info(collector_functional_unit, job_dir, activities, database_name):
+
+def get_useful_info(collector_functional_unit, job_dir, activities, database_name, project_name, balance_water):
     """Collect and save job-level data"""
     
     # Generate sacrificial LCA whose attributes will be saved
@@ -132,8 +139,8 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
     common_dir = os.path.join(job_dir, 'common_files')
     if not os.path.isdir(common_dir):
         os.makedirs(common_dir)
-    
-	# Save various attributes for eventual reuse in interpretation
+
+    # Save various attributes for eventual reuse in interpretation
     file = os.path.join(common_dir, 'activity_UUIDs.json')
     with open(file, "w") as f:
         json.dump(activities, f, indent=4)
@@ -173,7 +180,10 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
 
     fp = os.path.join(common_dir, 'bio_col_indices')
     np.save(fp, sacrificial_lca.biosphere_matrix.tocoo().col)
-    
+
+    if balance_water:
+        get_water_balancing_data(job_dir, activities, database_name, project_name, sacrificial_lca)
+
     return None
             
 @click.command()
@@ -185,26 +195,31 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
 @click.option('--include_inventory', help='Save inventory vector', default=True, type=bool)
 @click.option('--include_supply', help='Save supply vector', default=False, type=bool)
 @click.option('--include_matrices', help='Save A and B matrices', default=False, type=bool)
+@click.option('--balance_water', help='Balance water exchanges', default=False, type=bool)
 
-def generate_samples_job(project_name, database_name, iterations, cpus, base_dir, include_inventory=False, include_supply=False, include_matrices=False):
+def generate_samples_job(project_name, database_name, iterations, 
+                         cpus, base_dir, 
+                         include_inventory=False, include_supply=False, 
+                         include_matrices=False, balance_water=False):
     """Parent function for database-wide sample generation 
-	
-	Arguments: 
-	project_name -- Brightway2 project where the database is saved (str)
-	database_name -- Database name (str)
-	iterations -- Number of Monte Carlo iterations required
-	cpus -- Number of cpus over which the work is to be distributed
-	base_dir -- Root directory for all presampling files
-	include_supply -- If True, save the supply vector. Careful: supply vectors take lots of memory. 
+    
+    Arguments: 
+    project_name -- Brightway2 project where the database is saved (str)
+    database_name -- Database name (str)
+    iterations -- Number of Monte Carlo iterations required
+    cpus -- Number of cpus over which the work is to be distributed
+    base_dir -- Root directory for all presampling files
+    include_supply -- If True, save the supply vector. Careful: supply vectors take lots of memory. 
     include_matrices -- If True, save A and B matrices
-	
-	Does not return anything, but saves files in a "job" folder.
-	
-	Note: The use of @click allows the function arguments to be passed 
-	from a command line, but imposes project and database names with no 
-	white spaces.
-	
-	"""
+    balance_water -- If True, balance water exchanges
+    
+    Does not return anything, but saves files in a "job" folder.
+    
+    Note: The use of @click allows the function arguments to be passed 
+    from a command line, but imposes project and database names with no 
+    white spaces.
+    
+    """
     
     if not any([include_inventory, include_supply, include_matrices]):
         print("No output requested. At least one of the following must be true:")
@@ -215,7 +230,7 @@ def generate_samples_job(project_name, database_name, iterations, cpus, base_dir
     assert project_name in projects, "The requested project does not exist"
     projects.set_current(project_name)
     
-	# Create a unique job name
+    # Create a unique job name
     now = datetime.datetime.now()
     try:    # Works with Linux    
         job_id = "{}_{}-{}-{}_{}h{}".format(
@@ -245,45 +260,45 @@ def generate_samples_job(project_name, database_name, iterations, cpus, base_dir
                 now.hour,
                 now.minute
                 )
-            
-            
-	# Identify all activities for which samples are required
+
+    # Identify all activities for which samples are required
     db = Database(database_name)
     activities = [activity.key[1] for activity in db]
     
     # Specify all functional units
-    functional_units = [ {(database_name, act): 1} for act in activities ]
+    functional_units = [{(database_name, act): 1} for act in activities]
     
-	# Make directory to store results
+    # Make directory to store results
     samples_dir = os.path.join(base_dir, database_name, 'jobs')
     if not os.path.isdir(samples_dir):
         os.makedirs(samples_dir)
     job_dir = os.path.join(samples_dir, job_id)
     os.makedirs(job_dir)
 
-	# Generate and save job-level information
+    # Generate and save job-level information
     collector_functional_unit = {k:v for d in functional_units for k, v in d.items()}
-    get_useful_info(collector_functional_unit, job_dir, activities, database_name)
-    
-	# Calculate number of iterations per worker.
+    get_useful_info(collector_functional_unit, job_dir, activities, database_name, project_name, balance_water)
+
+    # Calculate number of iterations per worker.
     it_per_worker = [iterations//cpus for _ in range(cpus)]
     for _ in range(iterations-cpus*(iterations//cpus)):
         it_per_worker[_]+=1
 
-	# Dispatch actual sampling work to workers
+    # Dispatch actual sampling work to workers
     workers = []
     for worker_id in range(cpus):
         child = mp.Process(target=correlated_MCs_worker,
-                           args=(project_name,
-								 job_dir,
-								 job_id,
-								 worker_id,
-								 functional_units,
-								 it_per_worker[worker_id],
-								 include_inventory,
-                                 include_supply,
-                                 include_matrices
-								 )
+                           args=(
+                               project_name,
+                               job_dir,
+                               job_id,
+                               worker_id,
+                               functional_units,
+                               it_per_worker[worker_id],
+                               include_inventory,
+                               include_supply,include_matrices,
+                               balance_water
+                           )
                            )
         workers.append(child)
         child.start()
@@ -314,7 +329,8 @@ def generate_samples_job(project_name, database_name, iterations, cpus, base_dir
     print("{} samples generated for {} activities, saved to directory {}.".format(iterations, len(activities), job_dir)) 
     print("Use `clean_jobs.py` to sanitize the data, and then `concatenate_within_jobs.py` to consolidate samples")
     print("See log file for more information")
-    
+
+
 if __name__ == '__main__':
     __spec__ = None
     generate_samples_job()
