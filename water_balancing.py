@@ -78,27 +78,15 @@ def load_water_exchange_balancing_data(common_dir):
            unit_scaling_techno_product, unit_scaling_techno_waste
 
 
-    strategy_lists, \
-    initial_ratios_default, rows_of_interest_default, \
-    initial_ratios_inverse, rows_of_interest_inverse, \
-    set_static_data, \
-    unit_scaling_techno_product, unit_scaling_techno_waste \
-        = load_water_exchange_balancing_data(common_dir)
-
-
 def scale_exc_default(
         lca, act,
         rows_of_interest_default, initial_ratios_default,
         unit_scaling_techno_product, unit_scaling_techno_waste):
 
     """ Return indices and new amounts for exchanges that need scaling for specific act with default strategy"""
-    # print("In scale_exc_default, act=", act)
-    # print("rows of interest, default: ", rows_of_interest_default[act])
-    # print("unit_scaling_product: ", unit_scaling_techno_product)
-    # print("unit_scaling_waste: ", unit_scaling_techno_waste)
+
 
     col = lca.activity_dict[act]
-    rev_product_dict = {v:k for k, v in lca.product_dict.items()}
 
     def get_A_rows(product_keys, lca=lca):
         return [lca.product_dict[k] for k in product_keys]
