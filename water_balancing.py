@@ -1,7 +1,6 @@
 import os
 import pickle
 import numpy as np
-import pyprind
 
 def balance_water_exchanges(lca, common_dir):
     """ Change values in A and B matrices of LCA"""
@@ -10,11 +9,12 @@ def balance_water_exchanges(lca, common_dir):
     initial_ratios_default, rows_of_interest_default, \
     initial_ratios_inverse, rows_of_interest_inverse, \
     set_static_data, \
+    rows_of_interest_tap_water, \
     unit_scaling_techno_product, unit_scaling_techno_waste \
         = load_water_exchange_balancing_data(common_dir)
 
     print("rebalancing - default strategy")
-    for act in pyprind.prog_bar(strategy_lists['default']):
+    for act in strategy_lists['default']:
         lca = scale_exc_default(
             lca=lca,
             act=act,
@@ -25,7 +25,7 @@ def balance_water_exchanges(lca, common_dir):
         )
 
     print("rebalancing - inverse strategy")
-    for act in pyprind.prog_bar(strategy_lists['inverse']):
+    for act in strategy_lists['inverse']:
         lca = scale_exc_inverse(
             lca=lca,
             act=act,
@@ -35,9 +35,19 @@ def balance_water_exchanges(lca, common_dir):
             unit_scaling_techno_product=unit_scaling_techno_product)
 
     print("rebalancing - set_static strategy")
-    for act in pyprind.prog_bar(strategy_lists['set_static']):
+    for act in strategy_lists['set_static']:
         lca = scale_exc_static(lca, act, set_static_data)
+
+
+    if strategy_lists['tap_water_market']:
+        print("rebalancing tap water markets")
+        for act in strategy_lists['tap_water_market']:
+            scale_exc_tap_water_market(lca, act, rows_of_interest_tap_water)
+
+
     return lca
+
+
 
 
 def load_water_exchange_balancing_data(common_dir):
@@ -49,41 +59,62 @@ def load_water_exchange_balancing_data(common_dir):
     with open(os.path.join(water_dir, "strategy_lists.pickle"), 'rb') as f:
         strategy_lists = pickle.load(f)
 
+
     # Unit conversion factors
-    with open(os.path.join(water_dir, "unit_scaling_techno_product.pickle"), 'rb') as f:
-        unit_scaling_techno_product = pickle.load(f)
-    with open(os.path.join(water_dir, "unit_scaling_techno_waste.pickle"), 'rb') as f:
-        unit_scaling_techno_waste = pickle.load(f)
+    try:
+        with open(os.path.join(water_dir, "unit_scaling_techno_product.pickle"), 'rb') as f:
+            unit_scaling_techno_product = pickle.load(f)
+    except:
+        unit_scaling_techno_product = None
+    try:
+        with open(os.path.join(water_dir, "unit_scaling_techno_waste.pickle"), 'rb') as f:
+            unit_scaling_techno_waste = pickle.load(f)
+    except:
+        unit_scaling_techno_waste = None
 
     # Default strategy data
-    with open(os.path.join(water_dir, "initial_ratios_default.pickle"), 'rb') as f:
-        initial_ratios_default = pickle.load(f)
-    with open(os.path.join(water_dir, "rows_of_interest_default.pickle"), 'rb') as f:
-        rows_of_interest_default = pickle.load(f)
+    try:
+        with open(os.path.join(water_dir, "initial_ratios_default.pickle"), 'rb') as f:
+            initial_ratios_default = pickle.load(f)
+    except:
+        initial_ratios_default=None
+    try:
+        with open(os.path.join(water_dir, "rows_of_interest_default.pickle"), 'rb') as f:
+            rows_of_interest_default = pickle.load(f)
+    except:
+        rows_of_interest_default=None
 
-    # Inverse strategy data
-    with open(os.path.join(water_dir, "initial_ratios_inverse.pickle"), 'rb') as f:
-        initial_ratios_inverse = pickle.load(f)
-    with open(os.path.join(water_dir, "rows_of_interest_inverse.pickle"), 'rb') as f:
-        rows_of_interest_inverse = pickle.load(f)
+        # Inverse strategy data
+    try:
+        with open(os.path.join(water_dir, "initial_ratios_inverse.pickle"), 'rb') as f:
+            initial_ratios_inverse = pickle.load(f)
+    except:
+        initial_ratios_inverse = None
+    try:
+        with open(os.path.join(water_dir, "rows_of_interest_inverse.pickle"), 'rb') as f:
+            rows_of_interest_inverse = pickle.load(f)
+    except:
+        rows_of_interest_inverse = None
+
+        # Set_static strategy data
+    try:
+        with open(os.path.join(water_dir, "set_static_data.pickle"), 'rb') as f:
+            set_static_data = pickle.load(f)
+    except:
+        set_static_data = None
 
     # Set_static strategy data
-    with open(os.path.join(water_dir, "set_static_data.pickle"), 'rb') as f:
-        set_static_data = pickle.load(f)
-
+    try:
+        with open(os.path.join(water_dir, "tap_water_market_data.pickle"), 'rb') as f:
+            tap_water_market_data = pickle.load(f)
+    except:
+        tap_water_market_data = None
     return strategy_lists, \
            initial_ratios_default, rows_of_interest_default, \
            initial_ratios_inverse, rows_of_interest_inverse, \
            set_static_data, \
+           tap_water_market_data, \
            unit_scaling_techno_product, unit_scaling_techno_waste
-
-
-    strategy_lists, \
-    initial_ratios_default, rows_of_interest_default, \
-    initial_ratios_inverse, rows_of_interest_inverse, \
-    set_static_data, \
-    unit_scaling_techno_product, unit_scaling_techno_waste \
-        = load_water_exchange_balancing_data(common_dir)
 
 
 def scale_exc_default(
@@ -264,3 +295,9 @@ def scale_exc_static(lca, act, set_static_data):
     lca.biosphere_matrix[bio_rows, col] = np.array(data['bio_values']).reshape(-1, 1)
     return lca
 
+def scale_exc_tap_water_market(lca, act, rows_of_interest_tap_water):
+    col = lca.activity_dict[act]
+    loss = 1-lca.technosphere_matrix[col, col]
+    bio_row = [lca.biosphere_dict[k] for k in rows_of_interest_tap_water[act]]
+    lca.biosphere_matrix[bio_row, col] = loss
+    return lca

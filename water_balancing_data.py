@@ -31,6 +31,7 @@ def get_water_balancing_data(job_dir, activities, database_name, project_name,
         techno_keys_product, techno_keys_waste,
         ef_input_keys, ef_output_keys, water_dir
     )
+
     print("generating data for default strategy")
     generate_default_strategy_data(
         strategy_lists,
@@ -56,6 +57,30 @@ def get_water_balancing_data(job_dir, activities, database_name, project_name,
         sacrificial_lca,
         water_dir
     )
+
+    generate_tap_water_market_data(strategy_lists, ef_output_keys, water_dir)
+
+
+def generate_tap_water_market_data(strategy_lists, ef_output_keys, water_dir):
+    if strategy_lists['tap_water_market']:
+        print("generating data for tap water markets")
+        rows_of_interest_tap_water = {}
+        for act in pyprind.prog_bar(strategy_lists['tap_water_market']):
+            rows_of_interest_tap_water[act] = identify_rows_of_interest_tap_water(
+                act, ef_output_keys)
+
+        with open(os.path.join(water_dir, "tap_water_market_data.pickle"), "wb") as f:
+            pickle.dump(rows_of_interest_tap_water, f)
+
+def identify_rows_of_interest_tap_water(act_key, ef_output_keys):
+    """ Tap water markets are characterized by uncertain losses, which are emitted as water
+    All inputs from the technosphere do not have uncertainty
+    Simply return the key of the biosphere exchange that will take on the value of the loss
+    """
+    act = get_activity(act_key)
+    bio_exc = [exc.input.key for exc in act.biosphere() if exc.input.key in ef_output_keys]
+    return bio_exc
+
 
 
 def generate_set_static_data(
@@ -454,6 +479,8 @@ def activity_strategy_triage(
         ef_input_keys, ef_output_keys
 ):
     """ Determine what strategy to apply"""
+    if act['activity type']=="market activity" and act['reference product']=='tap water':
+        return 'tap_water_market'
     exchanges = [exc for exc in act.exchanges()]
     water_exc_product_inputs = [
         exc for exc in exchanges

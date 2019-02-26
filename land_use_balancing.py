@@ -1,7 +1,6 @@
 import os
 import pickle
 import numpy as np
-import pyprind
 
 def balance_land_use_exchanges(lca, common_dir):
     """ Change values in A and B matrices of LCA"""
@@ -14,7 +13,7 @@ def balance_land_use_exchanges(lca, common_dir):
 
     if strategy_lists['default']:
         print("rebalancing - default strategy")
-        for act in pyprind.prog_bar(strategy_lists['default']):
+        for act in strategy_lists['default']:
             lca = scale_exc_default(
                 lca=lca,
                 act=act,
@@ -24,7 +23,7 @@ def balance_land_use_exchanges(lca, common_dir):
 
     if strategy_lists['inverse']:
         print("rebalancing - inverse strategy")
-        for act in pyprind.prog_bar(strategy_lists['inverse']):
+        for act in strategy_lists['inverse']:
             lca = scale_exc_inverse(
                 lca=lca,
                 act=act,
@@ -34,7 +33,7 @@ def balance_land_use_exchanges(lca, common_dir):
 
     if strategy_lists['set_static']:
         print("rebalancing - set_static strategy")
-        for act in pyprind.prog_bar(strategy_lists['set_static']):
+        for act in strategy_lists['set_static']:
             lca = scale_exc_static(lca, act, set_static_data)
     return lca
 
