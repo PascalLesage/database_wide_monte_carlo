@@ -1,19 +1,10 @@
 from brightway2 import *
 import os
-import json
 import pickle
-import pandas as pd
-import numpy as np
-import sys
-import copy
 import pyprind
 from collections import defaultdict
-import matplotlib.pyplot as plt
 from bw2data.backends.peewee.schema import ExchangeDataset
-import math
 from techno_water_exchange_names import intermediate_exchange_names
-
-
 
 def get_water_balancing_data(job_dir, activities, database_name, project_name,
                              sacrificial_lca):

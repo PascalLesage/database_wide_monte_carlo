@@ -200,18 +200,6 @@ def scale_exc_inverse(
             get_rows = get_B_rows
         return np.asarray(np.squeeze((matrix[get_rows(rows_of_interest_inverse[act][value_type]), col]).todense()))
 
-    print("problem with inverse, for some reason.")
-    print("here is my data from rows_of_interest_inverse:")
-    print(len(rows_of_interest_inverse))
-    print(rows_of_interest_inverse[act])
-    print("somehow, Code couldn't get values, let's break this down:")
-    print("get rows returns this:")
-    # for k, v in rows_of_interest_inverse[act].items():
-    #     print("key: ", k)
-    #     print("value: ", v)
-    #     print("get rows on values:", get_B_rows(k))
-    #print("if we made it this far, then let's try getting the values:")
-
     ef_out_static_sampled = get_values('ef_out_static', 'B')
     ef_out_to_balance_sampled = get_values('ef_out_to_balance', 'B')
     ef_in_sampled = get_values('ef_in', 'B')
