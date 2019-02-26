@@ -32,7 +32,7 @@ def concat_vectors_worker(activity_list, output_type, job,
                   and 'common_files' not in folder]
     nb_iterations = len(iterations)
     for act in activity_list:
-        if act+".npy" in os.listdir(output_folder):
+        if act+'.npy' in os.listdir(output_folder):
             pass
         else:
             files = [os.path.join(it, output_type, act+'.npy')
@@ -64,8 +64,6 @@ def concatenate_within_jobs(base_dir, database_name, include_inventory, include_
 
     job_dir = os.path.join(base_dir, database_name, 'jobs')
     jobs = glob.glob(job_dir+'/*/')
-    print(job_dir)
-    print(jobs)
     logs = {}
     for job in jobs:
         assert os.path.isfile(os.path.join(job, 'log.json')), "Missing log file, run clean_jobs.py first."

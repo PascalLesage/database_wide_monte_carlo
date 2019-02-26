@@ -42,7 +42,7 @@ def concatenate_across_jobs(base_dir, database_name, project_name,
         os.makedirs(reference_folder)
 
     job_dir = os.path.join(base_dir, database_name, 'jobs')
-    jobs = glob.glob(job_dir+'/*/')
+    jobs = sorted(glob.glob(job_dir+'/*/'))
 
     with open(os.path.join(jobs[0], 'common_files', 'activity_UUIDs.json'), 'rb') as f:
         activity_UUIDs = json.load(f)
@@ -60,7 +60,13 @@ def concatenate_across_jobs(base_dir, database_name, project_name,
             assert set(activity_UUIDs) == set([act[:-4] for act in os.listdir(os.path.join(job, 'concatenated_arrays', 'Supply'))]), "The activity lists are not consistent across jobs"
         if include_matrices:
             assert 'Matrices' in os.listdir(concatenated_dir), "No matrices in concatenated folder of job {}, must run concatenate_within_jobs.py first".format(job)        
-    
+
+    # Move common_files from job[0]: it becomes the "reference" job
+    source_dir = os.path.join(jobs[0], 'common_files')
+    files_to_move = [os.path.join(source_dir, f) for f in os.listdir(source_dir)]
+    for file in files_to_move:
+        shutil.copy(file, reference_folder)
+            
     # Create ref objects
     ref_A_coo_cols = np.load(os.path.join(reference_folder, 'tech_col_indices.npy'))
     ref_A_coo_rows = np.load(os.path.join(reference_folder, 'tech_row_indices.npy'))
@@ -83,22 +89,17 @@ def concatenate_across_jobs(base_dir, database_name, project_name,
     ref_A_indices = {(ref_rev_product_dict[ref_A_coo_rows[i]], ref_rev_activity_dict[ref_A_coo_cols[i]]):i
                     for i in np.arange(ref_A_coo_rows.shape[0])
                     }
+    ref_rev_A_indices = {v:k for k, v in ref_A_indices.items()}
     ref_B_indices = {(ref_rev_bio_dict[ref_B_coo_rows[i]], ref_rev_activity_dict[ref_B_coo_cols[i]]):i
                     for i in np.arange(ref_B_coo_rows.shape[0])
                     }
-        
-    print("Aggregating from jobs {}".format(*jobs))
-
-    # Move common_files from job[0]: it becomes the "reference" job
-    source_dir = os.path.join(jobs[0], 'common_files')
-    files_to_move = [os.path.join(source_dir, f) for f in os.listdir(source_dir)]
-    for file in files_to_move:
-        shutil.copy(file, reference_folder)
+    ref_rev_B_indices = {v:k for k, v in ref_B_indices.items()}        
+    
+    print("Aggregating from jobs {}".format(jobs))
         
     # Generate some nice Excel files to make it easier to use output
     # Useful activity description
     projects.set_current(project_name)
-    
     cols = ['name', 'location', 'reference product', 'production amount', 'unit']
     file = os.path.join(reference_folder, 'activity_UUIDs.json')
     with open(file, "r") as f:
@@ -179,25 +180,24 @@ def concatenate_across_jobs(base_dir, database_name, project_name,
     )
     df = df.set_index('MD5 hash')
     df.to_excel(os.path.join(results_folder, 'reference_files', 'methods description.xlsx'))
-
     
     # Function to align arrays from different jobs
     # Only useful if jobs come from different projects
-    def translate(arr, ref_dict, rev_dict):
-        translator = np.array([ref_dict[rev_dict[row]] for row in rev_dict])
-        return arr[translator]
 
+    def translate(arr, d, rev_ref_dict):
+        translator = np.array([d[rev_ref_dict[row]] for row in rev_ref_dict])
+        return arr[translator]
+        
     if include_inventory:
         for act in activity_UUIDs:
             data = []
             for job in jobs:    
                 with open(os.path.join(job, 'common_files', 'bio_dict.pickle'), 'rb') as f:
                     bio_dict = pickle.load(f)
-                    rev_bio_dict = {k:v for v, k in bio_dict.items()}
                 data.append(translate(
                     np.load(os.path.join(job, 'concatenated_arrays', 'Inventory', act+'.npy')),
-                    ref_bio_dict,
-                    rev_bio_dict))
+                    bio_dict,
+                    ref_rev_bio_dict))
                 if delete_temps:
                     os.remove(os.path.join(job, 'concatenated_arrays', 'Inventory', act+'.npy'))
             if not os.path.isdir(os.path.join(results_folder, 'Inventory')):
@@ -213,11 +213,10 @@ def concatenate_across_jobs(base_dir, database_name, project_name,
             for job in jobs:    
                 with open(os.path.join(job, 'common_files', 'activity_dict.pickle'), 'rb') as f:
                     activity_dict = pickle.load(f)
-                    rev_activity_dict = {v:k for k, v in activity_dict.items()}
                 data.append(translate(
                     np.load(os.path.join(job, 'concatenated_arrays', 'Supply', act+'.npy')),
-                    ref_activity_dict,
-                    rev_activity_dict))
+                    activity_dict,
+                    ref_rev_activity_dict))
                 if delete_temps:
                     os.remove(os.path.join(job, 'concatenated_arrays', 'Supply', act+'.npy'))
             if not os.path.isdir(os.path.join(results_folder, 'Supply')):
@@ -228,25 +227,28 @@ def concatenate_across_jobs(base_dir, database_name, project_name,
                 )
 
     if include_matrices:
-        def create_A_indices_dict(job, ref_coo_rows, ref_coo_cols):
+        def create_A_indices_dict(job):
             with open(os.path.join(job, 'common_files', 'activity_dict.pickle'), 'rb') as f:
                 activity_dict = pickle.load(f)
                 rev_activity_dict = {v:k for k, v in activity_dict.items()}
             with open(os.path.join(job, 'common_files', 'product_dict.pickle'), 'rb') as f:
                 product_dict = pickle.load(f)
                 rev_product_dict = {v:k for k, v in product_dict.items()}
-            return {(rev_product_dict[ref_coo_rows[i]], rev_activity_dict[ref_coo_cols[i]]):i
-                    for i in np.arange(ref_coo_rows.shape[0])
+            coo_cols = np.load(os.path.join(job, 'common_files', 'tech_col_indices.npy'))
+            coo_rows = np.load(os.path.join(job, 'common_files', 'tech_row_indices.npy'))
+            
+            return {(rev_product_dict[coo_rows[i]], rev_activity_dict[coo_cols[i]]):i
+                    for i in np.arange(coo_rows.shape[0])
                     }
         data = []
         for job_id, job in enumerate(jobs):
+            print('concantenating: ', job)
             file = os.path.join(job, 'concatenated_arrays', 'Matrices', 'A_matrix.npy')
             if job_id == 0:
                 data.append(np.load(file))
             else:
-                A_indices = create_A_indices_dict(job, ref_A_coo_rows, ref_A_coo_cols)
-                rev_A_indices = {v:k for k, v in A_indices.items()}
-                data.append(translate(np.load(file), ref_A_indices, rev_A_indices))
+                A_indices = create_A_indices_dict(job)
+                data.append(translate(np.load(file), A_indices, ref_rev_A_indices))
             if delete_temps:
                 os.remove(file)
         if not os.path.isdir(os.path.join(results_folder, 'Matrices')):
@@ -273,8 +275,7 @@ def concatenate_across_jobs(base_dir, database_name, project_name,
                 data.append(np.load(file))
             else:
                 B_indices = create_B_indices_dict(job, ref_B_coo_rows, ref_B_coo_cols)
-                rev_B_indices = {v:k for k, v in B_indices.items()}
-                data.append(translate(np.load(file), ref_B_indices, rev_B_indices))
+                data.append(translate(np.load(file), B_indices, ref_rev_B_indices))
             if delete_temps:
                 os.remove(file)
         np.save(
