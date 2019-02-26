@@ -17,6 +17,8 @@ import sys
 import json
 from water_balancing_data import get_water_balancing_data
 from water_balancing import balance_water_exchanges
+from land_use_balancing_data import get_land_use_balancing_data
+from land_use_balancing import balance_land_use_exchanges
 
 
 __author__ = "Pascal Lesage"
@@ -41,7 +43,8 @@ def correlated_MCs_worker(project_name,
                           include_inventory,
                           include_supply,
                           include_matrices,
-                          balance_water
+                          balance_water,
+                          balance_land_use
                          ):
     """Generate database-wide correlated Monte Carlo samples
     
@@ -75,6 +78,8 @@ def correlated_MCs_worker(project_name,
         lca.rebuild_biosphere_matrix(lca.bio_rng.next())
         if balance_water:
             lca = balance_water_exchanges(lca, os.path.join(job_dir, 'common_files'))
+        if balance_land_use:
+            lca = balance_land_use_exchanges(lca, os.path.join(job_dir, 'common_files'))
 
         if include_matrices:
             matrices_dir = os.path.join(index_dir,'Matrices')
@@ -128,7 +133,7 @@ def correlated_MCs_worker(project_name,
         )
 
 
-def get_useful_info(collector_functional_unit, job_dir, activities, database_name, project_name, balance_water):
+def get_useful_info(collector_functional_unit, job_dir, activities, database_name, project_name, balance_water, balance_land_use):
     """Collect and save job-level data"""
     
     # Generate sacrificial LCA whose attributes will be saved
@@ -183,6 +188,8 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
 
     if balance_water:
         get_water_balancing_data(job_dir, activities, database_name, project_name, sacrificial_lca)
+    if balance_land_use:
+        get_land_use_balancing_data(job_dir, activities, database_name, project_name, sacrificial_lca)
 
     return None
             
@@ -196,11 +203,12 @@ def get_useful_info(collector_functional_unit, job_dir, activities, database_nam
 @click.option('--include_supply', help='Save supply vector', default=False, type=bool)
 @click.option('--include_matrices', help='Save A and B matrices', default=False, type=bool)
 @click.option('--balance_water', help='Balance water exchanges', default=False, type=bool)
+@click.option('--balance_land_use', help='Balance land use exchanges', default=False, type=bool)
 
 def generate_samples_job(project_name, database_name, iterations, 
                          cpus, base_dir, 
                          include_inventory=False, include_supply=False, 
-                         include_matrices=False, balance_water=False):
+                         include_matrices=False, balance_water=False, balance_land_use=False):
     """Parent function for database-wide sample generation 
     
     Arguments: 
@@ -212,6 +220,7 @@ def generate_samples_job(project_name, database_name, iterations,
     include_supply -- If True, save the supply vector. Careful: supply vectors take lots of memory. 
     include_matrices -- If True, save A and B matrices
     balance_water -- If True, balance water exchanges
+    balance_land_use -- If True, balance land use exchanges
     
     Does not return anything, but saves files in a "job" folder.
     
@@ -277,7 +286,7 @@ def generate_samples_job(project_name, database_name, iterations,
 
     # Generate and save job-level information
     collector_functional_unit = {k:v for d in functional_units for k, v in d.items()}
-    get_useful_info(collector_functional_unit, job_dir, activities, database_name, project_name, balance_water)
+    get_useful_info(collector_functional_unit, job_dir, activities, database_name, project_name, balance_water, balance_land_use)
 
     # Calculate number of iterations per worker.
     it_per_worker = [iterations//cpus for _ in range(cpus)]
@@ -297,7 +306,8 @@ def generate_samples_job(project_name, database_name, iterations,
                                it_per_worker[worker_id],
                                include_inventory,
                                include_supply,include_matrices,
-                               balance_water
+                               balance_water,
+                               balance_land_use
                            )
                            )
         workers.append(child)
